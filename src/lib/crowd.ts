@@ -1,3 +1,5 @@
+import "server-only";
+
 export type CrowdSide = "blue" | "yellow";
 export type CrowdPhase = "open" | "locked" | "finished";
 export type CrowdState = { roundId: string; phase: CrowdPhase; blue: number; yellow: number; bluePercent: number; yellowPercent: number; winner: CrowdSide | null };

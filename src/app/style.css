@@ -200,17 +200,17 @@ aside {
 .status-pill--running { background: #ddf6e7; color: #17633b; }
 .status-pill--finished { background: #fff0bf; color: #7d5410; }
 .crowd-pick { display: grid; gap: 6px; border: 1px solid var(--catalog-line); border-radius: 14px; padding: 9px; background: var(--catalog-soft); }.crowd-pick__heading, .crowd-pick__actions { display: flex; align-items: center; justify-content: space-between; gap: 7px; }.crowd-pick__heading span { color: var(--catalog-muted); font-size: 9px; font-weight: 800; letter-spacing: .1em; }.crowd-pick__heading b { border-radius: 999px; padding: 3px 7px; background: #ddf6e7; color: #17633b; font-size: 9px; letter-spacing: .06em; }.crowd-pick__score { display: grid; grid-template-columns: 1fr auto; align-items: center; font-size: 12px; }.crowd-pick__score strong { border-left: 3px solid; padding-left: 7px; }.crowd-pick__score span, .crowd-pick small { color: var(--catalog-muted); font-size: 10px; line-height: 1.3; }.crowd-pick__actions { display: grid; grid-template-columns: 1fr 1fr; }.crowd-pick__actions button { min-height: 30px; border-radius: 9px; padding: 0 6px; font-size: 10px; }.crowd-pick__actions button:disabled { cursor: default; opacity: .58; }
-.crowd-pick__heading { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; }.crowd-pick__hide, .crowd-pick-toggle { display: inline-grid; place-items: center; border: 1px solid var(--catalog-line); border-radius: 9px; background: var(--catalog-surface); color: var(--catalog-muted); cursor: pointer; }.crowd-pick__hide { width: 24px; min-height: 24px; padding: 0; }.crowd-pick-toggle { width: 30px; min-height: 30px; margin-left: auto; padding: 0; }
+.crowd-pick__heading { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; }.crowd-pick__hide, .crowd-pick-toggle { display: inline-grid; place-items: center; border: 1px solid var(--catalog-line); border-radius: 9px; background: var(--catalog-surface); color: var(--catalog-muted); cursor: pointer; }.crowd-pick__hide { width: 24px; min-height: 24px; padding: 0; }.crowd-pick-toggle { width: 18px; min-height: 18px; margin: -10px 0 -10px auto; padding: 0; border-color: transparent; background: transparent; }
 
-.match-panel__title h2 { margin: 0; font-size: 25px; letter-spacing: -.05em; }
-.match-panel__title p { margin: 6px 0 0; color: var(--catalog-muted); font-size: 12px; line-height: 1.5; }
+.match-panel__title h2 { margin: 0; font-size: 23px; letter-spacing: -.05em; }
+.match-panel__title p { margin: 4px 0 0; color: var(--catalog-muted); font-size: 11px; line-height: 1.4; }
 
 .winner-banner {
   display: flex;
   align-items: center;
   gap: 10px;
   border-radius: 14px;
-  padding: 13px;
+  padding: 10px;
   color: #17251e;
   animation: town-banner-arrive .38s ease-out both;
 }
@@ -218,12 +218,12 @@ aside {
 .winner-banner--yellow { background: #ffeba5; }
 .winner-banner strong,
 .winner-banner span { display: block; }
-.winner-banner strong { font-size: 16px; }
+.winner-banner strong { font-size: 15px; }
 .winner-banner span { margin-top: 2px; font-size: 11px; font-weight: 700; }
 @keyframes town-banner-arrive { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
-.explorer-stack { display: grid; gap: 10px; }
-.explorer-card { border: 1px solid var(--catalog-line); border-left: 4px solid; border-radius: 14px; padding: 12px; }
+.explorer-stack { display: grid; gap: 8px; }
+.explorer-card { border: 1px solid var(--catalog-line); border-left: 4px solid; border-radius: 14px; padding: 10px; }
 .explorer-card--blue { border-left-color: #36a9db; background: color-mix(in srgb, #36a9db 8%, var(--catalog-surface)); }
 .explorer-card--yellow { border-left-color: #e8b632; background: color-mix(in srgb, #e8b632 10%, var(--catalog-surface)); }
 .explorer-card__heading { gap: 7px; }
@@ -232,12 +232,12 @@ aside {
 .explorer-card--blue .explorer-token { color: #36a9db; }
 .explorer-card--yellow .explorer-token { color: #e8b632; }
 .score-pill { margin-left: auto; background: var(--catalog-soft); color: var(--catalog-ink); }
-.tactic-pill { margin-top: 11px; background: var(--catalog-app); color: var(--catalog-ink); letter-spacing: .04em; }
-.steps-label { display: block; margin-top: 7px; color: var(--catalog-muted); letter-spacing: .04em; }
+.tactic-pill { margin-top: 8px; background: var(--catalog-app); color: var(--catalog-ink); letter-spacing: .04em; }
+.steps-label { display: block; margin-top: 5px; color: var(--catalog-muted); letter-spacing: .04em; }
 
-.match-summary { gap: 8px; border-top: 1px solid var(--catalog-line); padding-top: 16px; color: var(--catalog-muted); font-size: 12px; font-weight: 700; }
+.match-summary { gap: 8px; border-top: 1px solid var(--catalog-line); padding-top: 10px; color: var(--catalog-muted); font-size: 12px; font-weight: 700; }
 
-.clash-card { display: grid; gap: 5px; border-top: 1px solid var(--catalog-line); padding-top: 12px; }
+.clash-card { display: grid; gap: 4px; border-top: 1px solid var(--catalog-line); padding-top: 9px; }
 .clash-card strong { font-size: 13px; }
 .clash-card span:last-child { color: var(--catalog-muted); font-size: 11px; line-height: 1.45; }
 
@@ -252,6 +252,12 @@ aside button { display: inline-flex; align-items: center; justify-content: cente
 .difficulty-selector button.is-selected { border-color: var(--catalog-ink); background: var(--catalog-soft); color: var(--catalog-ink); }
 .start-button { border-color: var(--catalog-control); background: var(--catalog-control); color: var(--catalog-control-ink); }
 .start-button:disabled { cursor: default; opacity: .55; }
+.match-panel--finished { gap: 8px; }
+.match-panel--finished .match-panel__title p { display: none; }
+.match-panel--finished .winner-banner { padding: 9px; }
+.match-panel--finished .explorer-card { padding: 9px; }
+.match-panel--finished .panel-controls { gap: 8px; }
+.demo-credit { margin: 18px 0 0; color: var(--catalog-muted); text-align: center; font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }.demo-credit a { color: var(--catalog-ink); text-decoration: none; }.demo-credit a:hover { text-decoration: underline; }
 
 @media (max-width: 800px) {
   .game-shell { padding: 20px; }

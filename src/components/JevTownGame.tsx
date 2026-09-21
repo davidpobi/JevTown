@@ -12,6 +12,8 @@ import {
   Sparkles,
   Sun,
   Trophy,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { apply, candidatePlans, step } from "@/game/rules";
 import { createTown } from "@/game/town";
@@ -28,6 +30,7 @@ import {
   subscribeToScenePreferences,
 } from "@/utils/persistenceUtils";
 import { isDevelopment } from "@/utils/environment";
+import { GameSound } from "@/utils/soundUtils";
 import { CrowdPick } from "@/components/CrowdPick";
 
 const createSeed = () => Date.now().toString(36);
@@ -88,6 +91,10 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
   const renderer = useRef<Awaited<ReturnType<typeof createTownRenderer>> | null>(
     null,
   );
+  const observedTownRef = useRef(town);
+  const soundRef = useRef<GameSound | null>(null);
+  const [soundMuted, setSoundMuted] = useState(false);
+
   const attachRendererHost = useCallback((node: HTMLDivElement | null) => {
     setRendererHost(node);
   }, []);
@@ -95,6 +102,31 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
   useEffect(() => {
     document.documentElement.dataset.jevtownTheme = sceneTheme;
   }, [sceneTheme]);
+
+  useEffect(() => {
+    const sound = new GameSound("jevtown");
+    soundRef.current = sound;
+    const frame = window.requestAnimationFrame(() => setSoundMuted(sound.isMuted()));
+    return () => { window.cancelAnimationFrame(frame); sound.dispose(); };
+  }, []);
+
+  useEffect(() => {
+    const previous = observedTownRef.current;
+    if (previous.seed === town.seed) {
+      if (town.blue.treasures.length > previous.blue.treasures.length || town.yellow.treasures.length > previous.yellow.treasures.length) {
+        void soundRef.current?.play("pickup");
+      }
+      if (town.lastEncounter && town.lastEncounter !== previous.lastEncounter) {
+        void soundRef.current?.play("clash");
+        if (town.lastEncounter.stolenTreasure) void soundRef.current?.play("steal");
+      }
+      if (previous.status !== "finished" && town.status === "finished") {
+        void soundRef.current?.play("win");
+        soundRef.current?.stopMusic();
+      }
+    }
+    observedTownRef.current = town;
+  }, [town]);
 
   // The host does not exist during the loading render. A callback ref lets us
   // initialise the renderer exactly when that element is mounted.
@@ -201,6 +233,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
     setWinnerStageSeed(null);
     const next = createTown(createSeed(), difficulty);
     setTown(next);
+    soundRef.current?.stopMusic();
     if (development) void fetch("/api/crowd", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "reset", roundId: next.seed }) });
   };
 
@@ -240,6 +273,18 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
             }
           >
             {sceneTheme === "day" ? <Moon size={17} /> : <Sun size={17} />}
+          </button>
+          <button
+            className="icon-button"
+            aria-label={soundMuted ? "Enable sound" : "Mute sound"}
+            title={soundMuted ? "Enable sound" : "Mute sound"}
+            onClick={() => {
+              const muted = !soundMuted;
+              soundRef.current?.setMuted(muted);
+              setSoundMuted(muted);
+            }}
+          >
+            {soundMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
           </button>
           <button
             className="icon-button"
@@ -297,7 +342,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
           )}
         </div>
 
-        <aside className="match-panel">
+        <aside className={`match-panel${town.status === "finished" ? " match-panel--finished" : ""}`}>
           <div className="match-panel__topline">
             <span className="eyebrow">
               <Sparkles size={13} aria-hidden="true" /> Treasure hunt
@@ -372,6 +417,8 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
                 disabled={town.status !== "idle"}
                 onClick={() => {
                   setTown((currentTown) => ({ ...currentTown, status: "running" }));
+                  void soundRef.current?.play("start");
+                  void soundRef.current?.startMusic();
                   void fetch("/api/crowd", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "lock" }) });
                 }}
               >
@@ -382,6 +429,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
           </div>}
         </aside>
       </section>
+      <p className="demo-credit">A <a href="https://www.bashbashlabs.com" target="_blank" rel="noreferrer">BashBash Labs</a> demo</p>
     </main>
   );
 }
