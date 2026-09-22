@@ -233,7 +233,9 @@ export const createTownRenderer = async (
   host.replaceChildren(canvas);
 
   let latestTown: Town | null = null;
+  let previousTown: Town | null = null;
   let latestOptions: SceneOptions | null = null;
+  let transitionStartedAt = 0;
   let animationFrame = 0;
   let viewportOffset: ViewportOffset = { x: 0, y: 0 };
   let drag: { pointerId: number; x: number; y: number } | null = null;
@@ -366,15 +368,34 @@ export const createTownRenderer = async (
   canvas.addEventListener("pointercancel", finishDrag);
 
   const animate = () => {
-    if (latestTown && latestOptions) paint(latestTown, latestOptions);
+    if (latestTown && latestOptions) {
+      const duration = 420;
+      const progress = previousTown && previousTown.seed === latestTown.seed
+        ? Math.min((performance.now() - transitionStartedAt) / duration, 1)
+        : 1;
+      const interpolate = (from: Point, to: Point): Point => ({
+        x: from.x + (to.x - from.x) * progress,
+        y: from.y + (to.y - from.y) * progress,
+      });
+      const visualTown = progress < 1 && previousTown
+        ? {
+          ...latestTown,
+          blue: { ...latestTown.blue, position: interpolate(previousTown.blue.position, latestTown.blue.position) },
+          yellow: { ...latestTown.yellow, position: interpolate(previousTown.yellow.position, latestTown.yellow.position) },
+        }
+        : latestTown;
+      paint(visualTown, latestOptions);
+    }
     animationFrame = window.requestAnimationFrame(animate);
   };
   animationFrame = window.requestAnimationFrame(animate);
 
   return {
     draw: (town, options) => {
+      previousTown = latestTown;
       latestTown = town;
       latestOptions = options;
+      transitionStartedAt = performance.now();
       paint(town, options);
     },
     destroy: () => {

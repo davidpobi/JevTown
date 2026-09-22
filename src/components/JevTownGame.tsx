@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { apply, candidatePlans, step } from "@/game/rules";
 import { createTown } from "@/game/town";
+import { fromLiveHuntMatchState, toLiveHuntMatchState } from "@/game/townLiveMatch";
 import type { Town, TownDifficulty } from "@/game/types";
 import {
   createTownRenderer,
@@ -30,8 +31,22 @@ import {
   subscribeToScenePreferences,
 } from "@/utils/persistenceUtils";
 import { isDevelopment } from "@/utils/environment";
+import { isLocalDevelopment } from "@/utils/environment";
 import { GameSound } from "@/utils/soundUtils";
 import { CrowdPick } from "@/components/CrowdPick";
+import { GENERAL } from "@/data/general";
+import Link from "next/link";
+import {
+  finishCrowdRound,
+  lockCrowdRound,
+  resetCrowdRound,
+} from "@/services/crowd.service";
+import { createCrowdLifecycleQueue } from "@/services/crowdLifecycle.service";
+import {
+  canMirrorLocalHuntMatch,
+  publishLocalHuntMatch,
+  subscribeToGlobalHuntMatch,
+} from "@/services/huntLiveMatch.service";
 
 const createSeed = () => Date.now().toString(36);
 
@@ -43,6 +58,26 @@ const formatRpsMove = (move: "rock" | "paper" | "scissors") =>
 
 const rpsSymbol = (move: "rock" | "paper" | "scissors") =>
   ({ rock: "✊", paper: "✋", scissors: "✌" })[move];
+
+const liveEventFor = (town: Town) => {
+  if (town.status === "finished" && town.winner) {
+    return { kind: "finished" as const, message: `${town.winner} found all three treasures.` };
+  }
+
+  if (town.status === "paused") {
+    return { kind: "paused" as const, message: "Hunt paused." };
+  }
+
+  if (town.lastEncounter && town.elapsed - town.lastEncounter.elapsed < 500) {
+    return { kind: "clash" as const, message: "Blue and Yellow clashed." };
+  }
+
+  if (town.status === "running") {
+    return { kind: "decision" as const, message: "Explorers chose their next routes." };
+  }
+
+  return { kind: "ready" as const, message: "Hunt ready to begin." };
+};
 
 function ExplorerCard({
   name,
@@ -87,13 +122,25 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
   const sceneTheme: SceneTheme = scenePreferences.theme;
   const mapView: MapView = scenePreferences.view;
   const development = isDevelopment();
+  const localDevelopment = isLocalDevelopment();
+  const localLiveMirrorConfigured = canMirrorLocalHuntMatch();
   const townRef = useRef<Town>(town);
   const renderer = useRef<Awaited<ReturnType<typeof createTownRenderer>> | null>(
     null,
   );
   const observedTownRef = useRef(town);
   const soundRef = useRef<GameSound | null>(null);
+  const initialCrowdRoundBound = useRef(false);
+  const liveVersionRef = useRef(0);
+  const lastLocalLiveSignatureRef = useRef<string | null>(null);
+  const localLiveMirrorUnavailableRef = useRef(false);
   const [soundMuted, setSoundMuted] = useState(false);
+  const [crowdLifecycleError, setCrowdLifecycleError] = useState<string | null>(null);
+  const [crowdLifecycleQueue] = useState(() =>
+    createCrowdLifecycleQueue(() => {
+      setCrowdLifecycleError("Crowd Pick is temporarily unavailable. The local hunt continues.");
+    }),
+  );
 
   const attachRendererHost = useCallback((node: HTMLDivElement | null) => {
     setRendererHost(node);
@@ -104,11 +151,83 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
   }, [sceneTheme]);
 
   useEffect(() => {
+    townRef.current = town;
+  }, [town]);
+
+  useEffect(() => {
     const sound = new GameSound("jevtown");
     soundRef.current = sound;
     const frame = window.requestAnimationFrame(() => setSoundMuted(sound.isMuted()));
     return () => { window.cancelAnimationFrame(frame); sound.dispose(); };
   }, []);
+
+  useEffect(() => {
+    if (localDevelopment) {
+      return;
+    }
+
+    return subscribeToGlobalHuntMatch(
+      (state) => {
+        if (!state) {
+          return;
+        }
+
+        setTown(fromLiveHuntMatchState(state));
+      },
+      () => setRendererError("Live hunt is temporarily unavailable."),
+    );
+  }, [localDevelopment]);
+
+  useEffect(() => {
+    if (
+      !localDevelopment
+      || !localLiveMirrorConfigured
+      || localLiveMirrorUnavailableRef.current
+    ) {
+      return;
+    }
+
+    const signature = [
+      town.seed,
+      town.status,
+      town.winner,
+      town.blue.tactic,
+      town.yellow.tactic,
+      town.blue.treasures.length,
+      town.yellow.treasures.length,
+      town.blue.known.size,
+      town.yellow.known.size,
+      town.lastEncounter?.elapsed,
+    ].join(":");
+
+    if (lastLocalLiveSignatureRef.current === signature) {
+      return;
+    }
+
+    lastLocalLiveSignatureRef.current = signature;
+    const state = toLiveHuntMatchState(
+      town,
+      ++liveVersionRef.current,
+      liveEventFor(town),
+    );
+
+    void publishLocalHuntMatch(state).catch(() => {
+      localLiveMirrorUnavailableRef.current = true;
+    });
+  }, [localDevelopment, localLiveMirrorConfigured, town]);
+
+  useEffect(() => {
+    if (
+      initialCrowdRoundBound.current
+      || !development
+      || localDevelopment
+    ) {
+      return;
+    }
+
+    initialCrowdRoundBound.current = true;
+    crowdLifecycleQueue.enqueue(() => resetCrowdRound("hunt", town.seed));
+  }, [crowdLifecycleQueue, development, localDevelopment, town.seed]);
 
   useEffect(() => {
     const previous = observedTownRef.current;
@@ -167,7 +286,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
   }, [mapView, rendererReady, sceneTheme, town]);
 
   useEffect(() => {
-    if (town.status !== "running") return;
+    if (!localDevelopment || town.status !== "running") return;
 
     const movementTimer = window.setInterval(() => {
       setTown((currentTown) => step(currentTown, 360));
@@ -207,7 +326,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
       window.clearInterval(movementTimer);
       window.clearInterval(decisionTimer);
     };
-  }, [town.seed, town.status]);
+  }, [localDevelopment, town.seed, town.status]);
 
   const matchStatus =
     town.status === "finished"
@@ -234,7 +353,9 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
     const next = createTown(createSeed(), difficulty);
     setTown(next);
     soundRef.current?.stopMusic();
-    if (development) void fetch("/api/crowd", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "reset", roundId: next.seed }) });
+    if (development && !localDevelopment) {
+      crowdLifecycleQueue.enqueue(() => resetCrowdRound("hunt", next.seed));
+    }
   };
 
   useEffect(() => {
@@ -246,15 +367,21 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
     return () => window.clearTimeout(timer);
   }, [clashJustDecidedMatch, town.seed, town.status]);
   useEffect(() => {
-    if (!development || town.status !== "finished" || !town.winner) return;
-    void fetch("/api/crowd", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "finish", winner: town.winner }) });
-  }, [development, town.status, town.winner]);
+    const winner = town.winner;
+    if (!development || localDevelopment || town.status !== "finished" || !winner) return;
+    crowdLifecycleQueue.enqueue(() => finishCrowdRound("hunt", town.seed, winner));
+  }, [crowdLifecycleQueue, development, localDevelopment, town.seed, town.status, town.winner]);
 
   return (
     <main className="game-shell min-h-dvh">
       <header>
-        <small>LIVE JEV TREASURE HUNT</small>
-        <h1>JevTown</h1>
+        <small>
+          <Link className="app-home-link" href="/" aria-label={`${GENERAL.appName} home`}>
+            {GENERAL.appName}
+          </Link>
+          {" · LIVE GAME"}
+        </small>
+        <h1>{GENERAL.games.hunt.name}</h1>
         <code>{town.seed}</code>
         <nav aria-label="Scene controls">
           <button
@@ -335,7 +462,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
             <div className={`town-victory-stage town-victory-stage--${town.winner}`} role="status">
               <Sparkles size={18} aria-hidden="true" />
               <Trophy size={42} aria-hidden="true" />
-              <span>Treasure hunt complete</span>
+              <span>{GENERAL.games.hunt.name} complete</span>
               <strong>{winnerName} wins!</strong>
               <em>All three treasures recovered</em>
             </div>
@@ -345,7 +472,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
         <aside className={`match-panel${town.status === "finished" ? " match-panel--finished" : ""}`}>
           <div className="match-panel__topline">
             <span className="eyebrow">
-              <Sparkles size={13} aria-hidden="true" /> Treasure hunt
+              <Sparkles size={13} aria-hidden="true" /> {GENERAL.games.hunt.name}
             </span>
             <span className={`status-pill status-pill--${town.status}`}>
               {town.status === "running" ? "Live" : town.status === "finished" ? "Complete" : "Ready"}
@@ -384,7 +511,8 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
             />
           </div>
 
-          <CrowdPick />
+          {!localDevelopment && <CrowdPick game="hunt" />}
+          {crowdLifecycleError && <p className="crowd-pick-error" role="alert">{crowdLifecycleError}</p>}
 
           <div className="match-summary">
             {town.status === "finished" ? <Trophy size={16} aria-hidden="true" /> : <Clock3 size={16} aria-hidden="true" />}
@@ -410,7 +538,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
             </div>
             <div className="primary-actions">
               <button className="new-town-button" onClick={() => resetTown()}>
-                New town
+                New hunt
               </button>
               <button
                 className="start-button"
@@ -419,7 +547,9 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
                   setTown((currentTown) => ({ ...currentTown, status: "running" }));
                   void soundRef.current?.play("start");
                   void soundRef.current?.startMusic();
-                  void fetch("/api/crowd", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "lock" }) });
+                  if (development && !localDevelopment) {
+                    crowdLifecycleQueue.enqueue(() => lockCrowdRound("hunt", town.seed));
+                  }
                 }}
               >
                 <Play size={15} fill="currentColor" aria-hidden="true" />

@@ -41,6 +41,8 @@ body {
   font-family: Arial, sans-serif;
 }
 
+.jev-home { display: grid; align-content: center; gap: 42px; min-height: 100dvh; max-width: 980px; margin: auto; padding: 32px; }.jev-home__header { display: grid; gap: 10px; }.jev-home__header p { margin: 0; color: var(--catalog-muted); font-size: 11px; font-weight: 800; letter-spacing: .14em; }.jev-home__header h1 { font-size: clamp(48px, 8vw, 88px); }.jev-home__header span { color: var(--catalog-muted); }.jev-home__games { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 0; margin: 0; }.jev-home__card { display: grid; gap: 13px; min-height: 280px; padding: 26px; border: 1px solid var(--catalog-line); border-radius: 22px; color: inherit; text-decoration: none; transition: transform .2s ease, border-color .2s ease; }.jev-home__card:hover { transform: translateY(-4px); border-color: var(--catalog-strong-line); }.jev-home__card span { font-size: 11px; font-weight: 900; letter-spacing: .14em; }.jev-home__card strong { font-size: 32px; letter-spacing: -.05em; }.jev-home__card p { margin: 0; color: var(--catalog-muted); line-height: 1.5; }.jev-home__card b { align-self: end; }.jev-home__card--hunt { background: #e7f0dc; }.jev-home__card--run { background: #101927; color: #e6edf7; }.jev-home__card--run p { color: #9aaabe; }.jev-home__credit { margin: 0; color: var(--catalog-muted); text-align: center; font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }.jev-home__credit a { color: inherit; } @media (max-width: 680px) { .jev-home__games { grid-template-columns: 1fr; } }
+
 .game-shell {
   min-height: 100dvh;
   max-width: 1220px;
@@ -51,7 +53,7 @@ body {
   transition: background .25s ease, color .25s ease;
 }
 
-header {
+.game-shell > header {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -59,33 +61,43 @@ header {
   padding-bottom: 20px;
 }
 
-header > small,
-aside small {
+.game-shell > header > small,
+.game-shell aside small {
   color: var(--catalog-muted);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .15em;
 }
 
-h1 {
+.app-home-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-home-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.game-shell h1 {
   margin: 0;
   font-size: 58px;
   letter-spacing: -.08em;
 }
 
-code {
+.game-shell code {
   margin-left: auto;
   color: #427d94;
   font-size: 12px;
 }
 
-nav {
+.game-shell nav {
   display: flex;
   gap: 8px;
 }
 
 .icon-button,
-aside button {
+.game-shell aside button {
   min-height: 40px;
   border: 1px solid var(--catalog-line);
   border-radius: 12px;
@@ -106,18 +118,18 @@ aside button {
 }
 
 .icon-button:hover,
-aside button:hover {
+.game-shell aside button:hover {
   border-color: var(--catalog-strong-line);
 }
 
-section {
+.game-shell > section {
   position: relative;
   margin-top: 24px;
   padding-right: 280px;
 }
 
-section > div,
-aside {
+.game-shell > section > div,
+.game-shell aside {
   overflow: hidden;
   border: 1px solid var(--catalog-line);
   border-radius: 18px;
@@ -241,7 +253,7 @@ aside {
 .clash-card strong { font-size: 13px; }
 .clash-card span:last-child { color: var(--catalog-muted); font-size: 11px; line-height: 1.45; }
 
-aside button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; }
+.game-shell aside button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; }
 .panel-controls { display: grid; gap: 12px; margin-top: auto; }
 .primary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .new-town-button { background: transparent; color: var(--catalog-ink); }
@@ -261,11 +273,11 @@ aside button { display: inline-flex; align-items: center; justify-content: cente
 
 @media (max-width: 800px) {
   .game-shell { padding: 20px; }
-  header { flex-wrap: wrap; }
+  .game-shell > header { flex-wrap: wrap; }
   h1 { font-size: 48px; }
   code { margin-left: 0; }
   nav { width: 100%; }
   .icon-button { flex: 1; }
-  section { display: grid; padding-right: 0; gap: 20px; }
+  .game-shell > section { display: grid; padding-right: 0; gap: 20px; }
   .match-panel { position: static; width: auto; overflow-y: visible; }
 }
