@@ -15,7 +15,8 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { apply, candidatePlans, step } from "@/game/rules";
+import { apply, step } from "@/game/rules";
+import { toHuntDecisionSnapshot } from "@/game/huntDecision";
 import { createTown } from "@/game/town";
 import { fromLiveHuntMatchState, toLiveHuntMatchState } from "@/game/townLiveMatch";
 import type { Town, TownDifficulty } from "@/game/types";
@@ -30,8 +31,11 @@ import {
   saveScenePreferences,
   subscribeToScenePreferences,
 } from "@/utils/persistenceUtils";
-import { isDevelopment } from "@/utils/environment";
-import { isLocalDevelopment } from "@/utils/environment";
+import {
+  isDevelopment,
+  isHuntPreviewPlayEnabled,
+  isLocalDevelopment,
+} from "@/utils/environment";
 import { GameSound } from "@/utils/soundUtils";
 import { CrowdPick } from "@/components/CrowdPick";
 import { GENERAL } from "@/data/general";
@@ -47,6 +51,7 @@ import {
   publishLocalHuntMatch,
   subscribeToGlobalHuntMatch,
 } from "@/services/huntLiveMatch.service";
+import { requestHuntDecisions } from "@/services/huntDecision.service";
 
 const createSeed = () => Date.now().toString(36);
 
@@ -84,12 +89,14 @@ function ExplorerCard({
   colour,
   treasures,
   tactic,
+  confidence,
   steps,
 }: {
   name: "Blue" | "Yellow";
   colour: "blue" | "yellow";
   treasures: number;
   tactic: string | null;
+  confidence: number | null;
   steps: number;
 }) {
   return (
@@ -102,7 +109,9 @@ function ExplorerCard({
           {treasures}/3
         </span>
       </div>
-      <span className="tactic-pill">{formatTactic(tactic)}</span>
+      <span className="tactic-pill">
+        {formatTactic(tactic)}{confidence === null ? "" : ` · ${Math.round(confidence * 100)}%`}
+      </span>
       <span className="steps-label">{steps ? `${steps} steps queued` : "Awaiting route"}</span>
     </article>
   );
@@ -123,6 +132,8 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
   const mapView: MapView = scenePreferences.view;
   const development = isDevelopment();
   const localDevelopment = isLocalDevelopment();
+  const huntPreviewPlay = isHuntPreviewPlayEnabled();
+  const localPlayEnabled = localDevelopment || huntPreviewPlay;
   const localLiveMirrorConfigured = canMirrorLocalHuntMatch();
   const townRef = useRef<Town>(town);
   const renderer = useRef<Awaited<ReturnType<typeof createTownRenderer>> | null>(
@@ -134,7 +145,10 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
   const liveVersionRef = useRef(0);
   const lastLocalLiveSignatureRef = useRef<string | null>(null);
   const localLiveMirrorUnavailableRef = useRef(false);
+  const decisionPendingRef = useRef(false);
+  const decisionTurnRef = useRef(0);
   const [soundMuted, setSoundMuted] = useState(false);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
   const [crowdLifecycleError, setCrowdLifecycleError] = useState<string | null>(null);
   const [crowdLifecycleQueue] = useState(() =>
     createCrowdLifecycleQueue(() => {
@@ -162,7 +176,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
   }, []);
 
   useEffect(() => {
-    if (localDevelopment) {
+    if (localPlayEnabled) {
       return;
     }
 
@@ -176,7 +190,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
       },
       () => setRendererError("Live hunt is temporarily unavailable."),
     );
-  }, [localDevelopment]);
+  }, [localPlayEnabled]);
 
   useEffect(() => {
     if (
@@ -220,14 +234,14 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
     if (
       initialCrowdRoundBound.current
       || !development
-      || localDevelopment
+      || localPlayEnabled
     ) {
       return;
     }
 
     initialCrowdRoundBound.current = true;
     crowdLifecycleQueue.enqueue(() => resetCrowdRound("hunt", town.seed));
-  }, [crowdLifecycleQueue, development, localDevelopment, town.seed]);
+  }, [crowdLifecycleQueue, development, localPlayEnabled, town.seed]);
 
   useEffect(() => {
     const previous = observedTownRef.current;
@@ -285,48 +299,60 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
     }
   }, [mapView, rendererReady, sceneTheme, town]);
 
+  const requestLocalDecisions = useCallback(async () => {
+    const currentTown = townRef.current;
+    if (decisionPendingRef.current || currentTown.status !== "running") return;
+
+    decisionPendingRef.current = true;
+    try {
+      const snapshots = [
+        toHuntDecisionSnapshot(currentTown, "blue"),
+        toHuntDecisionSnapshot(currentTown, "yellow"),
+      ] as const;
+      const result = await requestHuntDecisions({
+        kind: "tick",
+        matchId: currentTown.seed,
+        turn: ++decisionTurnRef.current,
+        elapsedMs: currentTown.elapsed,
+        snapshots: [snapshots[0], snapshots[1]],
+      });
+
+      setTown((previousTown) => {
+        if (previousTown.seed !== currentTown.seed || previousTown.status !== "running") {
+          return previousTown;
+        }
+        return result.decisions.reduce(
+          (nextTown, decision) => apply(nextTown, decision),
+          previousTown,
+        );
+      });
+      setDecisionError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Jev decision is temporarily unavailable.";
+      setDecisionError(message);
+      setTown((previousTown) => previousTown.seed === currentTown.seed
+        ? { ...previousTown, status: "paused" }
+        : previousTown);
+    } finally {
+      decisionPendingRef.current = false;
+    }
+  }, []);
+
   useEffect(() => {
-    if (!localDevelopment || town.status !== "running") return;
+    if (!localPlayEnabled || town.status !== "running") return;
 
     const movementTimer = window.setInterval(() => {
       setTown((currentTown) => step(currentTown, 360));
     }, 360);
 
-    const requestLocalDecisions = () => {
-      setTown((currentTown) => {
-        if (currentTown.status !== "running") return currentTown;
-
-        let nextTown = currentTown;
-
-        (["blue", "yellow"] as const).forEach((battler) => {
-          const plans = candidatePlans(nextTown, battler);
-          const plan = plans[0];
-          if (!plan) return;
-
-          // The current local policy selects one engine-priced candidate. The
-          // candidate shape is deliberately compatible with a live Jev choice.
-          nextTown = apply(nextTown, {
-            battler,
-            tactic: plan.tactic,
-            target: plan.target,
-            confidence: 0.5,
-          });
-        });
-
-        return nextTown;
-      });
-    };
-
-    // The first route starts immediately. Subsequent decisions refresh it at
-    // the same four-second cadence used by the live Jev loop.
-    requestLocalDecisions();
-    const decisionTimer = window.setInterval(requestLocalDecisions, 4_000);
+    void requestLocalDecisions();
+    const decisionTimer = window.setInterval(() => void requestLocalDecisions(), 4_000);
 
     return () => {
       window.clearInterval(movementTimer);
       window.clearInterval(decisionTimer);
     };
-  }, [localDevelopment, town.seed, town.status]);
+  }, [localPlayEnabled, requestLocalDecisions, town.seed, town.status]);
 
   const matchStatus =
     town.status === "finished"
@@ -350,10 +376,13 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
   );
   const resetTown = (difficulty: TownDifficulty = town.difficulty) => {
     setWinnerStageSeed(null);
+    setDecisionError(null);
+    decisionPendingRef.current = false;
+    decisionTurnRef.current = 0;
     const next = createTown(createSeed(), difficulty);
     setTown(next);
     soundRef.current?.stopMusic();
-    if (development && !localDevelopment) {
+    if (development && !localPlayEnabled) {
       crowdLifecycleQueue.enqueue(() => resetCrowdRound("hunt", next.seed));
     }
   };
@@ -368,9 +397,9 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
   }, [clashJustDecidedMatch, town.seed, town.status]);
   useEffect(() => {
     const winner = town.winner;
-    if (!development || localDevelopment || town.status !== "finished" || !winner) return;
+    if (!development || localPlayEnabled || town.status !== "finished" || !winner) return;
     crowdLifecycleQueue.enqueue(() => finishCrowdRound("hunt", town.seed, winner));
-  }, [crowdLifecycleQueue, development, localDevelopment, town.seed, town.status, town.winner]);
+  }, [crowdLifecycleQueue, development, localPlayEnabled, town.seed, town.status, town.winner]);
 
   return (
     <main className="game-shell min-h-dvh">
@@ -500,6 +529,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
               colour="blue"
               treasures={town.blue.treasures.length}
               tactic={town.blue.tactic}
+              confidence={town.blue.confidence}
               steps={town.blue.path.length}
             />
             <ExplorerCard
@@ -507,11 +537,12 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
               colour="yellow"
               treasures={town.yellow.treasures.length}
               tactic={town.yellow.tactic}
+              confidence={town.yellow.confidence}
               steps={town.yellow.path.length}
             />
           </div>
 
-          {!localDevelopment && <CrowdPick game="hunt" />}
+          {!localPlayEnabled && <CrowdPick game="hunt" />}
           {crowdLifecycleError && <p className="crowd-pick-error" role="alert">{crowdLifecycleError}</p>}
 
           <div className="match-summary">
@@ -528,7 +559,8 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
             </div>
           )}
           {rendererError && <p role="alert">{rendererError}</p>}
-          {development && <div className="panel-controls">
+          {decisionError && <p role="alert">{decisionError}</p>}
+          {localPlayEnabled && <div className="panel-controls">
             <div className="difficulty-selector" aria-label="Hunt difficulty">
               <span><Gauge size={14} aria-hidden="true" /> Hunt difficulty</span>
               <div>
@@ -547,7 +579,7 @@ export function JevTownGame({ initialSeed }: { initialSeed: string }) {
                   setTown((currentTown) => ({ ...currentTown, status: "running" }));
                   void soundRef.current?.play("start");
                   void soundRef.current?.startMusic();
-                  if (development && !localDevelopment) {
+                  if (development && !localPlayEnabled) {
                     crowdLifecycleQueue.enqueue(() => lockCrowdRound("hunt", town.seed));
                   }
                 }}

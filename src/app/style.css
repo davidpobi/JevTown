@@ -247,6 +247,7 @@ body {
 .tactic-pill { margin-top: 8px; background: var(--catalog-app); color: var(--catalog-ink); letter-spacing: .04em; }
 .steps-label { display: block; margin-top: 5px; color: var(--catalog-muted); letter-spacing: .04em; }
 
+
 .match-summary { gap: 8px; border-top: 1px solid var(--catalog-line); padding-top: 10px; color: var(--catalog-muted); font-size: 12px; font-weight: 700; }
 
 .clash-card { display: grid; gap: 4px; border-top: 1px solid var(--catalog-line); padding-top: 9px; }

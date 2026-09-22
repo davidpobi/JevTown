@@ -4,3 +4,6 @@ const normalizedBranch = () => process.env.NEXT_PUBLIC_BRANCH?.trim().toLowerCas
 export const isDevelopment = () => normalizedBranch() === "dev";
 
 export const isLocalDevelopment = () => process.env.NODE_ENV === "development";
+
+export const isHuntPreviewPlayEnabled = () =>
+  process.env.NEXT_PUBLIC_JEV_HUNT_PLAY_MODE?.trim().toLowerCase() === "true";
