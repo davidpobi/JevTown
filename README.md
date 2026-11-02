@@ -2,11 +2,11 @@
 
 > **Playable worlds for observable AI decisions.**
 
+[![JevTown gameplay preview](./assets/jev-town-preview.gif)](https://firebasestorage.googleapis.com/v0/b/bashbash-labs.firebasestorage.app/o/projects%2FJevTown%2FJEVTOWN-4K.mov?alt=media&token=5a7883bd-6319-4360-8435-963082f4236f)
+
 ![Jev Hunt: two Jevs navigating a living town](./assets/jev-hunt-overview.png)
 
 ![Jev Hunt: a completed match](./assets/jev-hunt-winner.png)
-
-[![JevTown gameplay preview](./assets/jev-town-preview.gif)](https://firebasestorage.googleapis.com/v0/b/bashbash-labs.firebasestorage.app/o/projects%2FJevTown%2FJEVTOWN-4K.mov?alt=media&token=5a7883bd-6319-4360-8435-963082f4236f)
 
 **[Watch the 4K gameplay demo ↗](https://firebasestorage.googleapis.com/v0/b/bashbash-labs.firebasestorage.app/o/projects%2FJevTown%2FJEVTOWN-4K.mov?alt=media&token=5a7883bd-6319-4360-8435-963082f4236f)**
 
