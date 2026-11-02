@@ -2,7 +2,7 @@
 
 > **Playable worlds for observable AI decisions.**
 
-[![JevTown gameplay](./assets/jev-town-hero.jpg)](https://firebasestorage.googleapis.com/v0/b/bashbash-labs.firebasestorage.app/o/projects%2FJevTown%2FJEVTOWN-4K.mov?alt=media&token=5a7883bd-6319-4360-8435-963082f4236f)
+[![JevTown gameplay preview](./assets/jev-town-preview.gif)](https://firebasestorage.googleapis.com/v0/b/bashbash-labs.firebasestorage.app/o/projects%2FJevTown%2FJEVTOWN-4K.mov?alt=media&token=5a7883bd-6319-4360-8435-963082f4236f)
 
 **[Watch the 4K gameplay demo ↗](https://firebasestorage.googleapis.com/v0/b/bashbash-labs.firebasestorage.app/o/projects%2FJevTown%2FJEVTOWN-4K.mov?alt=media&token=5a7883bd-6319-4360-8435-963082f4236f)**
 
@@ -77,6 +77,17 @@ npm run dev
 ```
 
 `OPENROUTER_API_KEY` is required for Jev-powered decision previews. Firebase and Upstash credentials enable the optional live-state, Crowd Pick, and replay infrastructure. Keep all non-`NEXT_PUBLIC_` values server-side.
+
+### Get a Jev API key
+
+JevTown uses `typesafe/jev-1.13` through OpenRouter. Create your own OpenRouter API key with access to Typesafe Jev at [openrouter.ai/typesafe](https://openrouter.ai/typesafe), then add it locally:
+
+```bash
+# Frontend/.env.local
+OPENROUTER_API_KEY=your_openrouter_key
+```
+
+Never commit this key or expose it through a `NEXT_PUBLIC_` variable.
 
 ```bash
 npm run lint
