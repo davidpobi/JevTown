@@ -2,7 +2,7 @@
 
 > **Playable worlds for observable AI decisions.**
 
-[![JevTown gameplay](https://firebasestorage.googleapis.com/v0/b/bashbash-labs.firebasestorage.app/o/projects%2FJevTown%2Fupscaledjev.webp?alt=media&token=062efa44-0b61-4ee8-a3b1-ede059a3688c)](https://firebasestorage.googleapis.com/v0/b/bashbash-labs.firebasestorage.app/o/projects%2FJevTown%2FJEVTOWN-4K.mov?alt=media&token=5a7883bd-6319-4360-8435-963082f4236f)
+[![JevTown gameplay](./assets/jev-town-hero.jpg)](https://firebasestorage.googleapis.com/v0/b/bashbash-labs.firebasestorage.app/o/projects%2FJevTown%2FJEVTOWN-4K.mov?alt=media&token=5a7883bd-6319-4360-8435-963082f4236f)
 
 **[Watch the 4K gameplay demo ↗](https://firebasestorage.googleapis.com/v0/b/bashbash-labs.firebasestorage.app/o/projects%2FJevTown%2FJEVTOWN-4K.mov?alt=media&token=5a7883bd-6319-4360-8435-963082f4236f)**
 
