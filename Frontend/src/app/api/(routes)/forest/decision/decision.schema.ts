@@ -1,0 +1,5 @@
+import { z } from "zod";
+const point = z.object({ x: z.number().int().min(0).max(20), y: z.number().int().min(0).max(20) });
+const plan = z.object({ id: z.string().max(96), tactic: z.enum(["COLLECT_RELIC_FAST", "COLLECT_RELIC_SAFE", "SCOUT_FRONTIER", "INTERCEPT_RIVAL"]), target: z.string().max(32), steps: z.number().int().min(0).max(80), exposure: z.number().int().min(0).max(80), informationGain: z.number().int().min(0).max(4), interceptValue: z.number().int().min(0).max(4) });
+const snapshot = z.object({ battler: z.enum(["blue", "yellow"]), self: point, rival: point.nullable(), heldRelics: z.number().int().min(0).max(3), knownCells: z.number().int().min(0).max(200), visibleRelics: z.array(z.object({ id: z.string().regex(/^R[1-3]$/), position: point })).max(3), frontiers: z.array(z.object({ id: z.string().regex(/^F[1-5]$/), position: point })).max(5), plans: z.array(plan).min(1).max(3) });
+export const forestDecisionTickSchema = z.object({ kind: z.literal("tick"), matchId: z.string().min(4).max(80), turn: z.number().int().positive(), elapsedMs: z.number().int().nonnegative(), snapshots: z.array(snapshot).length(2) });
